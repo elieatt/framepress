@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Compress videos in your browser. Nothing is uploaded.">
+<title>Framepress Video Compressor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: three views (choose → adjust → save). Editor is a two-column preview + settings grid that stacks on phones. */
+:root {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #efeff3;
+  --ink: #16161b;
+  --muted: #64646f;
+  --line: #e2e2e8;
+  --accent: #4655e8;
+  --accent-soft: #ebedfd;
+  --primary: #16161b;
+  --primary-ink: #ffffff;
+  --rec: #ef3b2d;
+  --good: #1a8050;
+  --warn: #b56d00;
+  --bad: #cc3333;
+  --shadow: 0 1px 2px rgb(20 20 30 / .05), 0 8px 24px rgb(20 20 30 / .06);
+  --font: "Rubik", "Segoe UI", Tahoma, system-ui, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e0e12; --surface: #18181e; --surface-2: #212128; --ink: #f1f1f4; --muted: #9b9ba7; --line: #2b2b34;
+    --accent: #8d98ff; --accent-soft: #23264a; --primary: #f1f1f4; --primary-ink: #111116;
+    --good: #46c681; --warn: #e6a83f; --bad: #f26b63; --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e0e12; --surface: #18181e; --surface-2: #212128; --ink: #f1f1f4; --muted: #9b9ba7; --line: #2b2b34;
+  --accent: #8d98ff; --accent-soft: #23264a; --primary: #f1f1f4; --primary-ink: #111116;
+  --good: #46c681; --warn: #e6a83f; --bad: #f26b63; --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .25);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+:root[lang="ar"] body { line-height: 1.7; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
+svg { flex: none; }
+[dir="rtl"] .flip { transform: scaleX(-1); }
+
+/* ---- Top bar ---- */
+.bar { max-width: 1080px; margin: 0 auto; padding: 16px 16px 0; display: flex; align-items: center; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+.brand i { width: 12px; height: 12px; border-radius: 50%; background: var(--rec); box-shadow: 0 0 0 4px color-mix(in srgb, var(--rec) 18%, transparent); }
+.stepper { flex: 1; display: flex; justify-content: center; }
+.stepper ol { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 6px; }
+.stepper li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.stepper li + li::before { content: ""; width: 20px; height: 1px; background: var(--line); margin-inline-end: 2px; }
+.stepper b { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--surface-2); }
+.stepper li[aria-current="step"] { color: var(--ink); font-weight: 500; }
+.stepper li[aria-current="step"] b { background: var(--primary); color: var(--primary-ink); }
+.stepper li.done b { background: var(--good); color: #fff; }
+.lang { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
+.lang button { border: 0; background: transparent; padding: 5px 12px; border-radius: 999px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+@media (max-width: 620px) { .stepper span { display: none; } .stepper li + li::before { width: 12px; } }
+
+main { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 40px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+
+/* ---- Buttons ---- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; padding: 11px 18px; font-weight: 500; font-size: 15px; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: transform .08s, background .15s, border-color .15s; }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--primary); color: var(--primary-ink); }
+.btn.primary:hover { background: color-mix(in srgb, var(--primary) 86%, var(--accent)); }
+.btn.secondary { background: var(--surface); border-color: var(--line); }
+.btn.secondary:hover { border-color: var(--muted); }
+.btn.ghost { background: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--ink); background: var(--surface-2); }
+.btn.block { width: 100%; padding: 14px 18px; font-size: 16px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: 14px; font-weight: 500; }
+.link:hover { text-decoration: underline; }
+
+/* ---- Help toggletips ---- */
+.info { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; display: inline-grid; place-items: center; padding: 0; line-height: 1; }
+.info:hover, .info[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.help { margin: 0; font-size: 13.5px; color: var(--muted); background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+
+/* ---- View 1: choose ---- */
+.hero { text-align: center; display: grid; gap: 10px; justify-items: center; padding-top: 24px; }
+.hero h1 { margin: 0; font-size: clamp(30px, 5.2vw, 48px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 700; text-wrap: balance; max-width: 18ch; }
+:root[lang="ar"] .hero h1 { letter-spacing: 0; line-height: 1.3; }
+.hero p { margin: 0; color: var(--muted); font-size: 17px; max-width: 46ch; text-wrap: balance; }
+.dropzone { display: grid; justify-items: center; gap: 12px; padding: 48px 20px; border: 2px dashed var(--line); border-radius: 20px; background: var(--surface); cursor: pointer; text-align: center; max-width: 640px; width: 100%; margin: 0 auto; transition: border-color .15s, background .15s; }
+.dropzone:hover, .dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
+.dropzone .icon { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.dropzone strong { font-size: 19px; font-weight: 600; }
+.dropzone .or { color: var(--muted); font-size: 13px; }
+.dropzone small { color: var(--muted); font-size: 13px; }
+.dropzone.loading { pointer-events: none; opacity: .7; }
+.features { list-style: none; margin: 0 auto; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; max-width: 760px; width: 100%; }
+.features li { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: start; }
+.features .ficon { grid-row: span 2; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+.features b { font-weight: 600; font-size: 15px; }
+.features span { color: var(--muted); font-size: 13.5px; }
+@media (max-width: 680px) { .features { grid-template-columns: 1fr; } }
+.choose { display: grid; gap: 32px; }
+
+/* ---- View 2: adjust ---- */
+.editor { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 880px) { .editor { grid-template-columns: 1fr; } }
+.preview { padding: 14px; display: grid; gap: 14px; min-width: 0; }
+.player { position: relative; border-radius: 10px; overflow: hidden; background: #0b0b0e; aspect-ratio: 16 / 9; max-width: 100%; }
+.player video { width: 100%; height: 100%; display: block; object-fit: contain; }
+.player .noprev { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: #c9c9d2; font-size: 14px; margin: 0; }
+.file-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.fname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; unicode-bidi: plaintext; }
+.specs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.specs div { display: inline-flex; gap: 6px; align-items: baseline; background: var(--surface-2); border-radius: 8px; padding: 5px 10px; font-size: 13px; }
+.specs dt { color: var(--muted); }
+.specs dd { margin: 0; font-weight: 500; }
+.spec-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.glossary { margin: 0; display: grid; gap: 6px; font-size: 13px; }
+.glossary b { color: var(--ink); font-weight: 600; }
+
+.settings { padding: 20px; display: grid; gap: 22px; min-width: 0; }
+.settings fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 22px; min-width: 0; }
+.outcome { display: grid; gap: 8px; padding: 16px; border-radius: 12px; background: var(--surface-2); }
+.outcome .cap { font-size: 13px; color: var(--muted); }
+.sizes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sizes .from { font-size: 18px; color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.sizes .to { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.sizes svg { color: var(--muted); }
+.outcome-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.qbadge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, currentColor 13%, transparent); }
+.qbadge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.qbadge.good { color: var(--good); } .qbadge.warn { color: var(--warn); } .qbadge.bad { color: var(--bad); }
+
+.group { display: grid; gap: 10px; min-width: 0; }
+.ghead { display: flex; align-items: center; gap: 8px; }
+.ghead .t { font-weight: 600; font-size: 15px; }
+.ghead .v { margin-inline-start: auto; font-weight: 700; font-size: 20px; }
+
+/* Range slider with quality-zone track */
+.range { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0; cursor: pointer; }
+.range::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: var(--zones, var(--surface-2)); }
+.range::-moz-range-track { height: 8px; border-radius: 999px; background: var(--zones, var(--surface-2)); }
+.range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -8px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); box-shadow: 0 2px 6px rgb(0 0 0 / .2); }
+.range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); box-shadow: 0 2px 6px rgb(0 0 0 / .2); }
+.scale { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); gap: 12px; }
+
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { flex: 1 1 auto; border: 1px solid var(--line); background: var(--surface); padding: 8px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.seg button:hover { border-color: var(--muted); }
+.seg button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+
+.formats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fmt { position: relative; display: grid; gap: 2px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; background: var(--surface); }
+.fmt:hover { border-color: var(--muted); }
+.fmt input { position: absolute; opacity: 0; pointer-events: none; }
+.fmt b { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fmt span { font-size: 13px; color: var(--muted); }
+.fmt em { font-style: normal; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.fmt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.fmt:has(input:checked) b { color: var(--accent); }
+.fmt:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fmt:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.switch-row .sub { display: block; font-size: 13px; color: var(--muted); font-weight: 400; }
+.switch { position: relative; width: 44px; height: 26px; flex: none; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--line); transition: background .15s; }
+.switch i::after { content: ""; position: absolute; top: 3px; inset-inline-start: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .25); transition: inset-inline-start .15s; }
+.switch input:checked + i { background: var(--accent); }
+.switch input:checked + i::after { inset-inline-start: 21px; }
+.switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch input:disabled + i { opacity: .45; }
+
+.progress { display: grid; gap: 10px; }
+.progress-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.progress-top b { font-weight: 600; }
+.progress-top span { font-size: 13px; color: var(--muted); }
+.bar-track { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.bar-track i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .25s; }
+.err { margin: 0; font-size: 14px; color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); padding: 10px 12px; border-radius: 10px; }
+.warnbox { margin: 0; font-size: 14px; color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); padding: 10px 12px; border-radius: 10px; }
+
+/* ---- View 3: save ---- */
+.result { padding: 24px; display: grid; gap: 22px; }
+.result-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; flex-wrap: wrap; }
+.result-head .done { display: inline-flex; align-items: center; gap: 6px; color: var(--good); font-weight: 600; font-size: 14px; }
+.result-head h2 { margin: 4px 0 2px; font-size: clamp(30px, 5vw, 44px); line-height: 1.1; letter-spacing: -0.02em; font-weight: 700; }
+:root[lang="ar"] .result-head h2 { letter-spacing: 0; }
+.result-head .sizes .to { font-size: 18px; font-weight: 600; letter-spacing: 0; }
+.result-head .sizes .from { font-size: 16px; }
+.result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 680px) { .compare { grid-template-columns: 1fr; } }
+.compare figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.compare figcaption { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.compare figcaption b { color: var(--ink); font-weight: 600; }
+.compare-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+
+/* ---- FAQ ---- */
+.faq { display: grid; gap: 12px; max-width: 760px; width: 100%; margin: 0 auto; }
+.faq h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
+.faq details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.faq summary { cursor: pointer; padding: 14px 16px; font-weight: 500; list-style: none; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font-size: 20px; color: var(--muted); line-height: 1; }
+.faq details[open] summary::after { content: "−"; }
+.faq details p { margin: 0; padding: 0 16px 16px; color: var(--muted); max-width: 66ch; }
+
+.toast { position: fixed; inset-inline: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); margin: 0 auto; max-width: 420px; background: var(--primary); color: var(--primary-ink); padding: 12px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 10px 30px rgb(0 0 0 / .25); z-index: 10; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand"><i aria-hidden="true"></i>Framepress</div>
+  <nav class="stepper" id="stepper">
+    <ol>
+      <li data-step="1"><b>1</b><span data-i18n="st1"></span></li>
+      <li data-step="2"><b>2</b><span data-i18n="st2"></span></li>
+      <li data-step="3"><b>3</b><span data-i18n="st3"></span></li>
+    </ol>
+  </nav>
+  <div class="lang" role="group" id="langGroup">
+    <button data-lang="en" lang="en">EN</button>
+    <button data-lang="ar" lang="ar">عربي</button>
+  </div>
+</header>
+
+<main>
+  <!-- View 1: choose -->
+  <section id="vChoose" class="choose">
+    <div class="hero">
+      <h1 data-i18n="heroTitle"></h1>
+      <p data-i18n="heroSub"></p>
+    </div>
+    <label class="dropzone" id="drop" tabindex="0">
+      <span class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
+      <strong id="dropTitle" data-i18n="dropTitle"></strong>
+      <span class="or" data-i18n="or"></span>
+      <span class="btn primary" data-i18n="chooseBtn"></span>
+      <small data-i18n="formats"></small>
+      <input type="file" id="file" accept="video/*,.mkv,.mov" hidden>
+    </label>
+    <p class="err" id="srcErr" hidden style="max-width:640px;margin:0 auto;width:100%"></p>
+    <ul class="features">
+      <li><span class="ficon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><b data-i18n="f1t"></b><span data-i18n="f1d"></span></li>
+      <li><span class="ficon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><b data-i18n="f2t"></b><span data-i18n="f2d"></span></li>
+      <li><span class="ficon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><b data-i18n="f3t"></b><span data-i18n="f3d"></span></li>
+    </ul>
+  </section>
+
+  <!-- View 2: adjust -->
+  <section id="vAdjust" class="editor" hidden>
+    <div class="card preview">
+      <div class="player">
+        <video id="vSrc" controls muted playsinline preload="metadata"></video>
+        <p class="noprev" id="noPrev" hidden data-i18n="noPreview"></p>
+      </div>
+      <div class="file-row">
+        <span class="fname" id="fname"></span>
+        <button class="link" id="changeBtn" data-i18n="change"></button>
+      </div>
+      <div class="spec-head"><span data-i18n="specsTitle"></span><button class="info" aria-expanded="false" aria-controls="hSpecs" data-help>?</button></div>
+      <dl class="specs" id="specs"></dl>
+      <div class="help" id="hSpecs" hidden>
+        <div class="glossary">
+          <span><b data-i18n="mSize"></b> · <span data-i18n="gSize"></span></span>
+          <span><b data-i18n="mDuration"></b> · <span data-i18n="gDuration"></span></span>
+          <span><b data-i18n="mResolution"></b> · <span data-i18n="gResolution"></span></span>
+          <span><b data-i18n="mFps"></b> · <span data-i18n="gFps"></span></span>
+          <span><b data-i18n="mBitrate"></b> · <span data-i18n="gBitrate"></span></span>
+          <span><b data-i18n="mCodec"></b> · <span data-i18n="gCodec"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card settings">
+      <div class="outcome" aria-live="polite">
+        <span class="cap" data-i18n="estimate"></span>
+        <div class="sizes"><span class="from num" id="oFrom"></span><svg class="flip" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="to num" id="oTo"></span></div>
+        <div class="outcome-foot"><span class="qbadge" id="qBadge"></span><span id="oRate" class="num"></span></div>
+      </div>
+
+      <fieldset id="settingsFs">
+        <div class="group">
+          <div class="ghead"><label class="t" for="ratio" data-i18n="reduceBy"></label><button class="info" aria-expanded="false" aria-controls="hRatio" data-help>?</button><span class="v num" id="rVal">50%</span></div>
+          <p class="help" id="hRatio" hidden data-i18n="hRatio"></p>
+          <input class="range" type="range" id="ratio" min="5" max="95" step="1" value="50">
+          <div class="scale"><span data-i18n="scaleLow"></span><span data-i18n="scaleHigh"></span></div>
+          <div class="seg" id="presets" role="group">
+            <button data-r="25" data-i18n="pLight"></button>
+            <button data-r="50" data-i18n="pBalanced"></button>
+            <button data-r="70" data-i18n="pStrong"></button>
+            <button data-r="85" data-i18n="pMax"></button>
+          </div>
+        </div>
+
+        <div class="group" role="radiogroup" aria-labelledby="fmtLabel">
+          <div class="ghead"><span class="t" id="fmtLabel" data-i18n="formatT"></span><button class="info" aria-expanded="false" aria-controls="hFormat" data-help>?</button></div>
+          <p class="help" id="hFormat" hidden data-i18n="hFormat"></p>
+          <div class="formats">
+            <label class="fmt"><input type="radio" name="codec" value="avc" checked><b>H.264 <em data-i18n="tagCompat"></em></b><span data-c="avc" data-i18n="dAvc"></span></label>
+            <label class="fmt"><input type="radio" name="codec" value="hevc"><b>H.265</b><span data-c="hevc" data-i18n="dHevc"></span></label>
+            <label class="fmt"><input type="radio" name="codec" value="av1"><b>AV1</b><span data-c="av1" data-i18n="dAv1"></span></label>
+            <label class="fmt"><input type="radio" name="codec" value="vp9"><b>VP9</b><span data-c="vp9" data-i18n="dVp9"></span></label>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="ghead"><span class="t" id="resLabel" data-i18n="resT"></span><button class="info" aria-expanded="false" aria-controls="hRes" data-help>?</button></div>
+          <p class="help" id="hRes" hidden data-i18n="hRes"></p>
+          <div class="seg" id="resSeg" role="group" aria-labelledby="resLabel"></div>
+        </div>
+
+        <div class="switch-row">
+          <label for="audio"><span class="t" style="font-weight:600" data-i18n="audioT"></span><span class="sub" id="audioSub"></span></label>
+          <span class="switch"><input type="checkbox" id="audio" checked role="switch"><i></i></span>
+        </div>
+      </fieldset>
+
+      <button class="btn primary block" id="go"></button>
+      <div class="progress" id="prog" hidden>
+        <div class="progress-top"><b id="pText" class="num"></b><span id="pEta" class="num"></span></div>
+        <div class="bar-track"><i id="barFill"></i></div>
+        <button class="btn secondary" id="cancel" data-i18n="cancel"></button>
+      </div>
+      <p class="err" id="runErr" hidden></p>
+    </div>
+  </section>
+
+  <!-- View 3: save -->
+  <section id="vDone" hidden>
+    <div class="card result">
+      <div class="result-head">
+        <div>
+          <span class="done"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg><span id="doneIn" class="num"></span></span>
+          <h2 id="savedTitle" class="num"></h2>
+          <div class="sizes"><span class="from num" id="rFrom"></span><svg class="flip" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="to num" id="rTo"></span></div>
+        </div>
+        <div class="result-actions">
+          <button class="btn primary" id="dl"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg><span data-i18n="dl"></span></button>
+          <button class="btn secondary" id="adjustBtn" data-i18n="adjust"></button>
+          <button class="btn ghost" id="newBtn" data-i18n="newVideo"></button>
+        </div>
+      </div>
+      <p class="warnbox" id="resWarn" hidden></p>
+      <div class="compare-bar"><span data-i18n="compareHint"></span><button class="btn secondary" id="playBoth" data-i18n="playBoth"></button></div>
+      <div class="compare">
+        <figure><div class="player"><video id="vOrig" controls playsinline muted></video></div><figcaption><b data-i18n="orig"></b><span class="num" id="sOrig"></span></figcaption></figure>
+        <figure><div class="player"><video id="vNew" controls playsinline muted></video></div><figcaption><b data-i18n="comp"></b><span class="num" id="sNew"></span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq" aria-labelledby="faqT">
+    <h2 id="faqT" data-i18n="faqT"></h2>
+    <details><summary data-i18n="fq1"></summary><p data-i18n="fa1"></p></details>
+    <details><summary data-i18n="fq2"></summary><p data-i18n="fa2"></p></details>
+    <details><summary data-i18n="fq3"></summary><p data-i18n="fa3"></p></details>
+    <details><summary data-i18n="fq4"></summary><p data-i18n="fa4"></p></details>
+    <details><summary data-i18n="fq5"></summary><p data-i18n="fa5"></p></details>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://unpkg.com/mediabunny@1.60.0/dist/bundles/mediabunny.min.cjs"></script>
+<script>
+(() => {
+  // ---- Translations ----
+  const I18N = {
+    en: {
+      st1: "Choose", st2: "Adjust", st3: "Save", langAria: "Language",
+      heroTitle: "Make videos smaller, right in your browser",
+      heroSub: "Nothing is uploaded. Choose how small you want it, then compare before you save.",
+      dropTitle: "Drop a video here", or: "or", chooseBtn: "Choose video", formats: "MP4, MOV, WebM or MKV", reading: "Reading video…",
+      f1t: "Private", f1d: "Your video never leaves your device.",
+      f2t: "Fast", f2d: "Uses your device's graphics hardware.",
+      f3t: "Your call", f3d: "Pick the size and check the quality first.",
+      noPreview: "This browser can't preview this file, but it can still compress it.",
+      change: "Change video", specsTitle: "Video details",
+      mSize: "Size", mDuration: "Length", mResolution: "Resolution", mFps: "Frame rate", mBitrate: "Bitrate", mCodec: "Codec",
+      gSize: "storage space the file uses.",
+      gDuration: "how long the video plays.",
+      gResolution: "width × height in pixels. More pixels show more detail and need more data.",
+      gFps: "pictures shown per second. Compression keeps this the same.",
+      gBitrate: "data used per second of video. This is what compression lowers.",
+      gCodec: "how the picture and sound are stored, such as H.264 or AAC.",
+      unknown: "unknown",
+      estimate: "Estimated new size", rateLine: "{rate} video bitrate",
+      reduceBy: "Reduce size by",
+      hRatio: "The share of the original size to remove: 50% turns 100 MB into about 50 MB. The bar's colour shows the expected quality: green looks the same as the original, amber softens fine detail and fast motion, red shows visible blocks.",
+      scaleLow: "Best quality", scaleHigh: "Smallest file",
+      presetsAria: "Presets", pLight: "Light", pBalanced: "Balanced", pStrong: "Strong", pMax: "Maximum",
+      formatT: "Format",
+      hFormat: "H.264 plays on every phone, TV and computer. H.265 and AV1 look better at the same size, but some older devices can't play them. VP9 saves a WebM file for websites. Greyed-out formats aren't supported by this browser.",
+      tagCompat: "Most compatible",
+      dAvc: "Plays everywhere", dHevc: "Smaller, same quality", dAv1: "Smallest, newer devices", dVp9: "WebM for websites", unsupported: "Not supported here",
+      resT: "Resolution",
+      hRes: "Keep the original for the most detail. A lower resolution makes the file smaller and hides blockiness on strong settings. Sizes larger than your video aren't offered.",
+      original: "Original",
+      audioT: "Keep audio", audioOn: "Copied unchanged when possible", audioOff: "The video will be silent", audioNone: "This video has no sound",
+      go: "Compress to {size}", cancel: "Cancel",
+      q1: "Looks identical", q2: "Excellent quality", q3: "Good quality", q4: "Fair quality", q5: "Low quality",
+      pPrep: "Preparing…", pRun: "Compressing · {p}%", pEta: "about {t} left", pCanceled: "Canceled",
+      errNoEncode: "This browser can't compress video. Open the page in a recent Chrome, Edge, Safari or Firefox.",
+      errNoVideo: "No video was found in this file",
+      errRead: "Couldn't open this file ({e}). Try an MP4, MOV, WebM or MKV video.",
+      errInvalid: "This format can't be used for this video ({e}). Choose H.264 and try again.",
+      errFail: "Compression stopped ({e}). Try H.264 or a lower resolution.",
+      doneIn: "Done in {t}", smaller: "{p}% smaller", notSmallerT: "No smaller",
+      dl: "Download", adjust: "Adjust settings", newVideo: "New video",
+      notSmaller: "This video was already efficiently compressed. Try a stronger setting, H.265 or AV1, or a lower resolution.",
+      compareHint: "Seeking one video moves the other, so you compare the same moment.",
+      playBoth: "Play both", pauseBoth: "Pause both", orig: "Original", comp: "Compressed",
+      dlSaved: "Saved {name}",
+      dlBusy: "A save window is already open. Finish it, then try again.",
+      dlUnavail: "Saving isn't available here. Right-click the compressed video and choose “Save video as…”.",
+      dlStarted: "Download started",
+      faqT: "Questions",
+      fq1: "Is my video uploaded anywhere?",
+      fa1: "No. Everything happens inside your browser with your device's own video encoder. The file never leaves your computer or phone.",
+      fq2: "Will the video lose quality?",
+      fa2: "Anything that makes a video smaller removes some information. With light or balanced settings at the original resolution, the difference is usually invisible. The quality label shows what to expect before you start, and you can compare both versions before saving.",
+      fq3: "Which format should I choose?",
+      fa3: "Choose H.264 if you'll send the video to many people, since it plays on everything. Choose H.265 or AV1 for the smallest file at the best quality when viewers have recent devices. VP9 makes a WebM file for websites.",
+      fq4: "Why isn't my file much smaller?",
+      fa4: "Videos from messaging apps, or ones that were already compressed, have little left to remove. Try a stronger setting, H.265 or AV1, or a lower resolution.",
+      fq5: "Which browsers work?",
+      fa5: "Recent Chrome, Edge, Safari 17+ and Firefox 130+. The new video is kept in memory while it's made, so very large files can fail on devices with little RAM.",
+      units: { B: "B", KB: "KB", MB: "MB", GB: "GB", kbps: "kbps", Mbps: "Mbps", fps: "fps" },
+    },
+    ar: {
+      st1: "اختر", st2: "اضبط", st3: "احفظ", langAria: "اللغة",
+      heroTitle: "صغّر حجم الفيديو مباشرةً في متصفحك",
+      heroSub: "لا يُرفع أي شيء. اختر الحجم الذي تريده، ثم قارن قبل الحفظ.",
+      dropTitle: "أفلت الفيديو هنا", or: "أو", chooseBtn: "اختر فيديو", formats: "MP4 أو MOV أو WebM أو MKV", reading: "جارٍ قراءة الفيديو…",
+      f1t: "خاص", f1d: "لا يغادر الفيديو جهازك أبدًا.",
+      f2t: "سريع", f2d: "يستخدم عتاد الرسوميات في جهازك.",
+      f3t: "القرار لك", f3d: "اختر الحجم وتحقق من الجودة أولًا.",
+      noPreview: "لا يستطيع هذا المتصفح معاينة الملف، لكنه يستطيع ضغطه.",
+      change: "تغيير الفيديو", specsTitle: "تفاصيل الفيديو",
+      mSize: "الحجم", mDuration: "المدة", mResolution: "الدقة", mFps: "معدل الإطارات", mBitrate: "معدل البت", mCodec: "الترميز",
+      gSize: "المساحة التي يشغلها الملف.",
+      gDuration: "مدة تشغيل الفيديو.",
+      gResolution: "العرض × الارتفاع بالبكسل. البكسلات الأكثر تعني تفاصيل أكثر وبيانات أكثر.",
+      gFps: "عدد الصور في كل ثانية. لا يغيّره الضغط.",
+      gBitrate: "كمية البيانات لكل ثانية من الفيديو، وهي ما يخفّضه الضغط.",
+      gCodec: "طريقة تخزين الصورة والصوت، مثل H.264 أو AAC.",
+      unknown: "غير معروف",
+      estimate: "الحجم الجديد المتوقع", rateLine: "معدل بت الفيديو {rate}",
+      reduceBy: "قلّل الحجم بنسبة",
+      hRatio: "النسبة التي ستُحذف من الحجم الأصلي: 50% تحوّل 100 ميغابايت إلى نحو 50 ميغابايت. لون الشريط يبيّن الجودة المتوقعة: الأخضر يبدو مثل الأصلي، والبرتقالي ينعّم التفاصيل الدقيقة والحركة السريعة، والأحمر تظهر فيه مربعات واضحة.",
+      scaleLow: "أفضل جودة", scaleHigh: "أصغر ملف",
+      presetsAria: "إعدادات جاهزة", pLight: "خفيف", pBalanced: "متوازن", pStrong: "قوي", pMax: "أقصى",
+      formatT: "الصيغة",
+      hFormat: "H.264 يعمل على كل هاتف وتلفاز وحاسوب. H.265 وAV1 يعطيان صورة أفضل بالحجم نفسه، لكن بعض الأجهزة القديمة لا تشغّلهما. VP9 يحفظ ملف WebM للمواقع. الصيغ الباهتة لا يدعمها هذا المتصفح.",
+      tagCompat: "الأكثر توافقًا",
+      dAvc: "يعمل في كل مكان", dHevc: "أصغر بالجودة نفسها", dAv1: "الأصغر، للأجهزة الحديثة", dVp9: "WebM للمواقع", unsupported: "غير مدعوم هنا",
+      resT: "الدقة",
+      hRes: "اختر الأصلية للحفاظ على أكبر قدر من التفاصيل. الدقة الأقل تصغّر الملف وتخفي التشوهات عند الضغط القوي. لا تظهر الدقات الأكبر من الفيديو.",
+      original: "الأصلية",
+      audioT: "الإبقاء على الصوت", audioOn: "يُنسخ دون تغيير متى أمكن", audioOff: "سيكون الفيديو بلا صوت", audioNone: "لا يحتوي هذا الفيديو على صوت",
+      go: "اضغط إلى {size}", cancel: "إلغاء",
+      q1: "مطابق للأصل", q2: "جودة ممتازة", q3: "جودة جيدة", q4: "جودة مقبولة", q5: "جودة منخفضة",
+      pPrep: "جارٍ التجهيز…", pRun: "جارٍ الضغط · {p}%", pEta: "بقي نحو {t}", pCanceled: "أُلغي",
+      errNoEncode: "هذا المتصفح لا يستطيع ضغط الفيديو. افتح الصفحة في إصدار حديث من Chrome أو Edge أو Safari أو Firefox.",
+      errNoVideo: "لم يُعثر على فيديو في هذا الملف",
+      errRead: "تعذّر فتح هذا الملف ({e}). جرّب فيديو بصيغة MP4 أو MOV أو WebM أو MKV.",
+      errInvalid: "لا يمكن استخدام هذه الصيغة مع هذا الفيديو ({e}). اختر H.264 وحاول مجددًا.",
+      errFail: "توقف الضغط ({e}). جرّب H.264 أو دقة أقل.",
+      doneIn: "اكتمل خلال {t}", smaller: "أصغر بنسبة {p}%", notSmallerT: "لم يصغر الحجم",
+      dl: "تنزيل", adjust: "تعديل الإعدادات", newVideo: "فيديو جديد",
+      notSmaller: "هذا الفيديو مضغوط بكفاءة أصلًا. جرّب إعدادًا أقوى، أو H.265 أو AV1، أو دقة أقل.",
+      compareHint: "عند التنقل في أحد الفيديوهين يتحرك الآخر معه، لتقارن اللحظة نفسها.",
+      playBoth: "تشغيل الاثنين", pauseBoth: "إيقاف الاثنين", orig: "الأصلي", comp: "المضغوط",
+      dlSaved: "حُفظ {name}",
+      dlBusy: "هناك نافذة حفظ مفتوحة بالفعل. أكملها ثم حاول مجددًا.",
+      dlUnavail: "الحفظ غير متاح هنا. انقر بزر الفأرة الأيمن على الفيديو المضغوط واختر «حفظ الفيديو باسم…».",
+      dlStarted: "بدأ التنزيل",
+      faqT: "أسئلة شائعة",
+      fq1: "هل يُرفع الفيديو إلى أي مكان؟",
+      fa1: "لا. تتم العملية كلها داخل متصفحك باستخدام مُرمِّز الفيديو في جهازك. لا يغادر الملف حاسوبك أو هاتفك.",
+      fq2: "هل ستنخفض جودة الفيديو؟",
+      fa2: "أي تصغير للفيديو يحذف جزءًا من المعلومات. مع الإعداد الخفيف أو المتوازن والدقة الأصلية لا يُلاحظ الفرق عادةً. يبيّن مؤشر الجودة ما تتوقعه قبل البدء، ويمكنك مقارنة النسختين قبل الحفظ.",
+      fq3: "أي صيغة أختار؟",
+      fa3: "اختر H.264 إن كنت سترسل الفيديو لكثير من الناس، فهو يعمل على كل الأجهزة. اختر H.265 أو AV1 لأصغر ملف بأفضل جودة إن كانت أجهزة المشاهدين حديثة. VP9 يصنع ملف WebM للمواقع.",
+      fq4: "لماذا لم يصغر الملف كثيرًا؟",
+      fa4: "فيديوهات تطبيقات المراسلة أو المضغوطة مسبقًا لم يبقَ فيها الكثير لحذفه. جرّب إعدادًا أقوى، أو H.265 أو AV1، أو دقة أقل.",
+      fq5: "ما المتصفحات التي تعمل؟",
+      fa5: "الإصدارات الحديثة من Chrome وEdge وSafari 17+ وFirefox 130+. يُحفظ الفيديو الجديد في الذاكرة أثناء إنشائه، لذا قد تفشل الملفات الكبيرة جدًا على الأجهزة ذات الذاكرة المحدودة.",
+      units: { B: "بايت", KB: "كيلوبايت", MB: "ميغابايت", GB: "غيغابايت", kbps: "كيلوبت/ث", Mbps: "ميغابت/ث", fps: "إطار/ث" },
+    },
+  };
+
+  const MB = window.Mediabunny;
+  const $ = (id) => document.getElementById(id);
+  const state = { lang: "en", view: "choose", file: null, info: null, ratio: 50, codec: "avc", res: 0, conversion: null, outBlob: null, outName: "", srcUrl: null, outUrl: null, progress: null, elapsed: 0 };
+  const CODEC_EFF = { avc: 1, hevc: 1.45, vp9: 1.35, av1: 1.7 };
+  let playing = false;
+  const RESOLUTIONS = [2160, 1440, 1080, 720, 480];
+  const MIN_VIDEO_BPS = 150_000;
+  const codecSupport = { avc: true, hevc: true, av1: true, vp9: true };
+
+  const t = (key, params) => {
+    let s = I18N[state.lang][key] ?? I18N.en[key] ?? key;
+    if (params) for (const k in params) s = s.replace("{" + k + "}", params[k]);
+    return s;
+  };
+  const unit = (u) => I18N[state.lang].units[u];
+  const fmtBytes = (b) => {
+    if (!isFinite(b)) return "—";
+    const u = ["B", "KB", "MB", "GB"]; let i = 0;
+    while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+    return (b >= 100 || i === 0 ? b.toFixed(0) : b.toFixed(1)) + " " + unit(u[i]);
+  };
+  const fmtRate = (bps) => bps >= 1e6 ? (bps / 1e6).toFixed(1) + " " + unit("Mbps") : Math.round(bps / 1e3) + " " + unit("kbps");
+  const fmtTime = (s) => {
+    if (!isFinite(s)) return "—";
+    s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+    return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(sec).padStart(2, "0");
+  };
+  const errText = (e) => (e && e.message ? e.message : String(e)).replace(/\.$/, "");
+
+  // Messages keep {key, params} so they re-render on language change.
+  const msgs = new Map();
+  function setMsg(el, key, params) {
+    if (!key) { msgs.delete(el); el.textContent = ""; el.hidden = true; return; }
+    msgs.set(el, { key, params }); el.textContent = t(key, params); el.hidden = false;
+  }
+  let toastTimer;
+  function toast(key, params) {
+    const el = $("toast"); setMsg(el, key, params);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => setMsg(el), 4000);
+  }
+
+  // ---- Views ----
+  function setView(v) {
+    state.view = v;
+    $("vChoose").hidden = v !== "choose"; $("vAdjust").hidden = v !== "adjust"; $("vDone").hidden = v !== "done";
+    const step = { choose: 1, adjust: 2, done: 3 }[v];
+    document.querySelectorAll("#stepper li").forEach((li) => {
+      const n = +li.dataset.step;
+      li.classList.toggle("done", n < step);
+      if (n === step) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ---- Language ----
+  function applyLang(lang) {
+    state.lang = lang;
+    document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    $("langGroup").setAttribute("aria-label", t("langAria"));
+    $("presets").setAttribute("aria-label", t("presetsAria"));
+    document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    msgs.forEach((m, el) => { el.textContent = t(m.key, m.params); });
+    renderCodecs(); renderSpecs(); renderRes(); renderAudio(); updateEstimate(); renderProgress(); renderResult();
+    try { localStorage.setItem("framepress-lang", lang); } catch {}
+  }
+  document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => applyLang(b.dataset.lang)));
+
+  // ---- Help toggletips ----
+  document.querySelectorAll("[data-help]").forEach((b) => {
+    const panel = $(b.getAttribute("aria-controls"));
+    b.setAttribute("aria-label", "?");
+    b.addEventListener("click", () => {
+      const open = b.getAttribute("aria-expanded") !== "true";
+      b.setAttribute("aria-expanded", String(open)); panel.hidden = !open;
+    });
+  });
+
+  // ---- Codec support ----
+  function renderCodecs() {
+    document.querySelectorAll('input[name="codec"]').forEach((inp) => {
+      const ok = codecSupport[inp.value];
+      inp.disabled = !ok;
+      const d = document.querySelector(`[data-c="${inp.value}"]`);
+      d.textContent = ok ? t(d.dataset.i18n) : t("unsupported");
+      inp.checked = inp.value === state.codec;
+    });
+  }
+  async function checkCodecs(w = 1920, h = 1080) {
+    for (const c of ["avc", "hevc", "av1", "vp9"]) {
+      try { codecSupport[c] = await MB.canEncodeVideo(c, { width: w, height: h }); } catch { codecSupport[c] = false; }
+    }
+    if (!codecSupport[state.codec]) state.codec = ["avc", "hevc", "vp9", "av1"].find((c) => codecSupport[c]) || "avc";
+    renderCodecs(); updateEstimate();
+  }
+  document.querySelectorAll('input[name="codec"]').forEach((inp) => inp.addEventListener("change", () => { state.codec = inp.value; updateEstimate(); }));
+
+  // ---- File loading ----
+  const drop = $("drop");
+  drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+  $("file").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ""; });
+  $("changeBtn").addEventListener("click", () => $("file").click());
+  $("newBtn").addEventListener("click", () => { clearResult(); state.file = null; state.info = null; setView("choose"); });
+  $("adjustBtn").addEventListener("click", () => { pauseAll(); setView("adjust"); });
+
+  async function loadFile(file) {
+    setMsg($("srcErr")); setMsg($("runErr"));
+    if (!MB || typeof VideoEncoder === "undefined") { setMsg($("srcErr"), "errNoEncode"); return; }
+    drop.classList.add("loading"); $("dropTitle").textContent = t("reading");
+    try {
+      const input = new MB.Input({ source: new MB.BlobSource(file), formats: MB.ALL_FORMATS });
+      const vt = await input.getPrimaryVideoTrack();
+      if (!vt) throw new Error(t("errNoVideo"));
+      const at = await input.getPrimaryAudioTrack();
+      const duration = await input.computeDuration();
+      const vStats = await vt.computePacketStats(300);
+      let aRate = 0;
+      if (at) { try { aRate = (await at.computePacketStats(300)).averageBitrate || 128000; } catch { aRate = 128000; } }
+      clearResult();
+      state.file = file;
+      state.info = {
+        width: vt.displayWidth, height: vt.displayHeight, duration, fps: vStats.averagePacketRate || 30,
+        vCodec: vt.codec, aCodec: at ? at.codec : null, hasAudio: !!at, aRate, totalBps: (file.size * 8) / duration,
+      };
+      if (state.srcUrl) URL.revokeObjectURL(state.srcUrl);
+      state.srcUrl = URL.createObjectURL(file);
+      $("noPrev").hidden = true;
+      $("vSrc").src = state.srcUrl;
+      $("fname").textContent = file.name; $("fname").title = file.name;
+      state.res = 0;
+      $("audio").checked = !!at;
+      renderSpecs(); renderRes(); renderAudio();
+      setView("adjust");
+      await checkCodecs(state.info.width, state.info.height);
+    } catch (err) {
+      setMsg($("srcErr"), "errRead", { e: errText(err) });
+    } finally {
+      drop.classList.remove("loading"); $("dropTitle").textContent = t("dropTitle");
+    }
+    updateEstimate();
+  }
+  $("vSrc").addEventListener("error", () => { if ($("vSrc").getAttribute("src")) $("noPrev").hidden = false; });
+
+  function renderSpecs() {
+    const i = state.info;
+    if (!i) return;
+    const rows = [
+      ["mSize", fmtBytes(state.file.size)], ["mDuration", fmtTime(i.duration)], ["mResolution", i.width + "×" + i.height],
+      ["mFps", Math.round(i.fps * 100) / 100 + " " + unit("fps")], ["mBitrate", fmtRate(i.totalBps)],
+      ["mCodec", (i.vCodec || t("unknown")).toUpperCase() + (i.aCodec ? " · " + i.aCodec.toUpperCase() : "")],
+    ];
+    $("specs").replaceChildren(...rows.map(([k, v]) => {
+      const d = document.createElement("div"), dt = document.createElement("dt"), dd = document.createElement("dd");
+      dt.textContent = t(k); dd.textContent = v; dd.className = "num"; d.append(dt, dd); return d;
+    }));
+  }
+
+  function renderRes() {
+    const i = state.info;
+    if (!i) return;
+    const short = Math.min(i.width, i.height);
+    const opts = [0, ...RESOLUTIONS.filter((r) => r < short)];
+    $("resSeg").replaceChildren(...opts.map((r) => {
+      const b = document.createElement("button");
+      b.textContent = r ? r + "p" : t("original") + " · " + short + "p";
+      b.setAttribute("aria-pressed", String(r === state.res));
+      b.addEventListener("click", () => { state.res = r; renderRes(); updateEstimate(); });
+      return b;
+    }));
+  }
+
+  function renderAudio() {
+    const has = !!(state.info && state.info.hasAudio);
+    $("audio").disabled = !has;
+    $("audioSub").textContent = !has ? t("audioNone") : $("audio").checked ? t("audioOn") : t("audioOff");
+  }
+  $("audio").addEventListener("change", () => { renderAudio(); updateEstimate(); });
+
+  // ---- Estimate ----
+  function setRatio(r) {
+    state.ratio = r; $("ratio").value = r; $("rVal").textContent = r + "%";
+    document.querySelectorAll("#presets button").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.r === r)));
+    updateEstimate();
+  }
+  $("ratio").addEventListener("input", (e) => setRatio(+e.target.value));
+  document.querySelectorAll("#presets button").forEach((b) => b.addEventListener("click", () => setRatio(+b.dataset.r)));
+
+  function outDims() {
+    const i = state.info;
+    if (!state.res) return { w: i.width, h: i.height, scaled: false };
+    const s = state.res / Math.min(i.width, i.height), even = (n) => Math.max(2, Math.round(n / 2) * 2);
+    return { w: even(i.width * s), h: even(i.height * s), scaled: true };
+  }
+  function plan(ratio = state.ratio) {
+    const i = state.info;
+    const keepAudio = i.hasAudio && $("audio").checked;
+    const audioBps = keepAudio ? Math.max(i.aRate, 64000) : 0;
+    const videoBps = Math.max(MIN_VIDEO_BPS, Math.round(i.totalBps * (1 - ratio / 100) - audioBps));
+    const { w, h, scaled } = outDims();
+    const bpp = (videoBps * CODEC_EFF[state.codec]) / (w * h * i.fps);
+    return { videoBps, keepAudio, w, h, scaled, bpp, size: ((videoBps + audioBps) * i.duration) / 8 };
+  }
+  function level(bpp) {
+    if (bpp >= 0.09) return ["q1", "good"];
+    if (bpp >= 0.055) return ["q2", "good"];
+    if (bpp >= 0.032) return ["q3", "warn"];
+    if (bpp >= 0.018) return ["q4", "warn"];
+    return ["q5", "bad"];
+  }
+  // Paint the slider track with the quality zone for every position.
+  function paintZones() {
+    const stops = [];
+    for (let r = 5; r <= 95; r += 1) {
+      const cls = level(plan(r).bpp)[1];
+      const pos = ((r - 5) / 90) * 100;
+      stops.push(`color-mix(in srgb, var(--${cls}) 70%, var(--surface-2)) ${pos.toFixed(1)}%`);
+    }
+    const dir = state.lang === "ar" ? "to left" : "to right";
+    $("ratio").style.setProperty("--zones", `linear-gradient(${dir}, ${stops.join(", ")})`);
+  }
+  function updateEstimate() {
+    if (!state.info) return;
+    const p = plan();
+    $("oFrom").textContent = fmtBytes(state.file.size);
+    $("oTo").textContent = "≈ " + fmtBytes(p.size);
+    $("oRate").textContent = t("rateLine", { rate: fmtRate(p.videoBps) });
+    const [key, cls] = level(p.bpp);
+    $("qBadge").textContent = t(key); $("qBadge").className = "qbadge " + cls;
+    $("go").textContent = t("go", { size: "≈ " + fmtBytes(p.size) });
+    paintZones();
+  }
+
+  // ---- Compression ----
+  $("go").addEventListener("click", compress);
+  $("cancel").addEventListener("click", async () => { if (state.conversion) await state.conversion.cancel(); });
+
+  function renderProgress() {
+    const p = state.progress;
+    if (!p) return;
+    if (p.phase === "prep") { $("pText").textContent = t("pPrep"); $("pEta").textContent = ""; }
+    else if (p.phase === "run") { $("pText").textContent = t("pRun", { p: (p.pct * 100).toFixed(0) }); $("pEta").textContent = p.eta != null ? t("pEta", { t: fmtTime(p.eta) }) : ""; }
+  }
+  function busy(on) {
+    $("settingsFs").disabled = on; $("changeBtn").disabled = on;
+    $("go").hidden = on; $("prog").hidden = !on;
+  }
+
+  async function compress() {
+    if (!state.info) return;
+    setMsg($("runErr")); clearResult();
+    const p = plan(), codec = state.codec, isWebm = codec === "vp9";
+    busy(true); $("barFill").style.width = "0%";
+    state.progress = { phase: "prep" }; renderProgress();
+    const t0 = performance.now();
+    let conversion = null;
+    try {
+      // A fresh reader for every run.
+      const input = new MB.Input({ source: new MB.BlobSource(state.file), formats: MB.ALL_FORMATS });
+      const target = new MB.BufferTarget();
+      const output = new MB.Output({ format: isWebm ? new MB.WebMOutputFormat() : new MB.Mp4OutputFormat({ fastStart: "in-memory" }), target });
+      const video = { codec, quality: new MB.Quality({ bitrate: p.videoBps, bitrateMode: "variable" }), forceTranscode: true, keyFrameInterval: 4 };
+      if (p.scaled) { video.width = p.w; video.height = p.h; video.fit = "contain"; }
+      conversion = await MB.Conversion.init({ input, output, video, audio: p.keepAudio ? {} : { discard: true } });
+      if (!conversion.isValid) {
+        const e = new Error(conversion.discardedTracks.map((d) => d.track.type + ": " + d.reason.replace(/_/g, " ")).join("; "));
+        e.invalid = true; throw e;
+      }
+      state.conversion = conversion;
+      conversion.onProgress = (prog) => {
+        const pct = Math.min(1, Math.max(0, prog)), el = (performance.now() - t0) / 1000;
+        $("barFill").style.width = (pct * 100).toFixed(1) + "%";
+        state.progress = { phase: "run", pct, eta: pct > 0.03 ? el / pct - el : null }; renderProgress();
+      };
+      await conversion.execute();
+      state.outBlob = new Blob([target.buffer], { type: isWebm ? "video/webm" : "video/mp4" });
+      state.outName = state.file.name.replace(/\.[^.]+$/, "") + "-compressed." + (isWebm ? "webm" : "mp4");
+      state.elapsed = (performance.now() - t0) / 1000;
+      state.progress = null;
+      showResult();
+    } catch (err) {
+      state.progress = null;
+      if (conversion && conversion.state === "canceled") toast("pCanceled");
+      else setMsg($("runErr"), err && err.invalid ? "errInvalid" : "errFail", { e: errText(err) });
+    } finally {
+      state.conversion = null; busy(false);
+    }
+  }
+
+  // ---- Result ----
+  function clearResult() {
+    pauseAll();
+    if (state.outUrl) URL.revokeObjectURL(state.outUrl);
+    state.outUrl = null; state.outBlob = null;
+    $("vNew").removeAttribute("src"); $("vOrig").removeAttribute("src");
+    setMsg($("resWarn"));
+  }
+  function renderResult() {
+    if (!state.outBlob) return;
+    const orig = state.file.size, now = state.outBlob.size, saved = 1 - now / orig;
+    $("doneIn").textContent = t("doneIn", { t: fmtTime(state.elapsed) });
+    $("savedTitle").textContent = saved > 0 ? t("smaller", { p: Math.round(saved * 100) }) : t("notSmallerT");
+    $("rFrom").textContent = fmtBytes(orig); $("rTo").textContent = fmtBytes(now);
+    $("sOrig").textContent = fmtBytes(orig); $("sNew").textContent = fmtBytes(now);
+    $("playBoth").textContent = playing ? t("pauseBoth") : t("playBoth");
+  }
+  function showResult() {
+    state.outUrl = URL.createObjectURL(state.outBlob);
+    $("vOrig").src = state.srcUrl; $("vNew").src = state.outUrl;
+    if (state.outBlob.size >= state.file.size) setMsg($("resWarn"), "notSmaller");
+    renderResult(); setView("done");
+  }
+  // Keep both players on the same moment.
+  const a = $("vOrig"), b = $("vNew");
+  const sync = (from, to) => () => { if (Math.abs(to.currentTime - from.currentTime) > 0.25) to.currentTime = from.currentTime; };
+  a.addEventListener("seeked", sync(a, b)); b.addEventListener("seeked", sync(b, a));
+
+  function pauseAll() { a.pause(); b.pause(); playing = false; renderResult(); }
+  $("playBoth").addEventListener("click", () => {
+    if (playing) { pauseAll(); return; }
+    b.currentTime = a.currentTime; a.play().catch(() => {}); b.play().catch(() => {});
+    playing = true; renderResult();
+  });
+  [a, b].forEach((v) => v.addEventListener("ended", () => { playing = false; renderResult(); }));
+
+  // ---- Saving ----
+  let downloadsCap = null;
+  const capReady = (window.claude && window.claude.use)
+    ? window.claude.use("downloads").then((d) => (downloadsCap = d)).catch(() => (downloadsCap = null))
+    : Promise.resolve(null);
+  $("dl").addEventListener("click", async () => {
+    if (!state.outBlob) return;
+    await capReady;
+    if (downloadsCap) {
+      try {
+        const r = await downloadsCap.save({ filename: state.outName, data: state.outBlob });
+        if (r.status === "saved") toast("dlSaved", { name: state.outName });
+      } catch (e) {
+        const code = e && e.code;
+        if (code !== "declined") toast(code === "rate_limited" ? "dlBusy" : "dlUnavail");
+      }
+      return;
+    }
+    // Opened directly in a browser: a normal download works.
+    const link = document.createElement("a");
+    link.href = state.outUrl; link.download = state.outName;
+    document.body.appendChild(link); link.click(); link.remove();
+    toast("dlStarted");
+  });
+
+  // ---- Start ----
+  let initialLang = (navigator.language || "").toLowerCase().startsWith("ar") ? "ar" : "en";
+  try { const saved = localStorage.getItem("framepress-lang"); if (saved === "ar" || saved === "en") initialLang = saved; } catch {}
+  applyLang(initialLang);
+  setRatio(50);
+  setView("choose");
+  window.scrollTo(0, 0);
+  if (!MB || typeof VideoEncoder === "undefined") setMsg($("srcErr"), "errNoEncode");
+})();
+</script>
+</body>
+</html>
